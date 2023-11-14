@@ -2,8 +2,6 @@
 
 [ext_resource type="Texture2D" uid="uid://dxc3eqxbxooqw" path="res://icon.svg" id="1_cwsuq"]
 
-[node name="cell" type="Node2D"]
-
-[node name="Sprite2D" type="Sprite2D" parent="."]
+[node name="cell" type="Sprite2D"]
 texture = ExtResource("1_cwsuq")
 centered = false

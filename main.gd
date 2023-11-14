@@ -7,33 +7,36 @@ var cell = preload("res://cell.tscn")
 var screen_size : Vector2
 var sprite_size : Vector2
 var cells = []
-var t_cells = []
+var cell_bitmap_1 = []
+var cell_bitmap_2 = []
 var rows
 var columns
-var generate = false
-var iteration = 0
 
 
 func _ready():
 	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_MAXIMIZED)
 
-	var t_cell = cell.instantiate()
-	var t_sprite : Sprite2D = t_cell.get_child(0)
-	sprite_size = t_sprite.texture.get_size()
+	# Instantiate the cell to get its size and figure out how many fit on the screen
+	var t_cell : Sprite2D  = cell.instantiate()
+	sprite_size = t_cell.texture.get_size()
 	screen_size = get_tree().get_root().size	
 	rows = screen_size.y / (sprite_size.y * scaling)
 	columns = screen_size.x / (sprite_size.x * scaling)
+	t_cell.queue_free()
 	
+	# Initialize all of the structures
 	for y in range(rows):
 		cells.append([])
 		cells[y].resize(columns)
-		t_cells.append([])
-		t_cells[y].resize(columns)
+		cell_bitmap_1.append([])
+		cell_bitmap_1[y].resize(columns)
+		cell_bitmap_2.append([])
+		cell_bitmap_2[y].resize(columns)
 		for x in range(columns):
-			cells[y][x] = randi_range(0, 1)
-			t_cells[y][x] = 0
+			cell_bitmap_1[y][x] = randi_range(0, 1)
+			cell_bitmap_2[y][x] = 0
 
-	add_child(draw_life(cells))
+	add_child(flood_all_cells(cells))
 	
 	var timer := Timer.new()
 	timer.wait_time = 1.0 / speed
@@ -42,69 +45,59 @@ func _ready():
 	timer.start()
 
 
-func draw_life(c : Array) -> Node2D:
+func flood_all_cells(c : Array) -> Node2D:
 	var node = Node2D.new()
 	node.scale = Vector2(scaling, scaling)
-	node.set_name("Generation_" + str(iteration))
-	iteration += 1
+	node.set_name("Cells")
 	
 	for y in range(c.size()):
 		for x in range(c[y].size()):
-			if c[y][x] == 1:
-				var t_cell = cell.instantiate()
-				t_cell.position = Vector2(x * sprite_size.x, y * sprite_size.y)
-				node.add_child(t_cell)
+			var t_cell = cell.instantiate()
+			t_cell.position = Vector2(x * sprite_size.x, y * sprite_size.y)
+			node.add_child(t_cell)
+			cells[y][x] = t_cell
 	
 	return node
 
 
-func print_cells(c1 : Array, c2 : Array):
-	for i in range(c1.size()):
-		print(c1[i],  "  ", c2[i])
-
-
 #func _process(delta):
-#	if iteration > 0:
-#		do_next_generation()
+#	do_next_generation()
 
 
 func do_next_generation():
-	var next_gen = next_generation(cells)
+	next_generation(cell_bitmap_1, cell_bitmap_2)
 
-	var gen = get_node("Generation_" + str(iteration - 1))
-	gen.queue_free()
+	set_cells_from_bitmap(cell_bitmap_1)
 
-	add_child(draw_life(next_gen))
-
-	var swap = cells
-	cells = next_gen
-	t_cells = swap
-	
-	
-func _input(event):
-	if event is InputEventMouseButton and event.is_pressed():
-		generate = true
+	var swap = cell_bitmap_2
+	cell_bitmap_2 = cell_bitmap_1
+	cell_bitmap_1 = swap
 
 
-func next_generation(c : Array) -> Array:
-#	var t_cells = []
-#	for y in range(c.size()):
-#		t_cells.append([])
-#		t_cells[y].resize(c[y].size())
-#		for x in range(c[y].size()):
-#			t_cells[y][x] = 0
-	
+func set_cells_from_bitmap(c : Array):
 	for y in range(c.size()):
 		for x in range(c[y].size()):
-			var n = neighbors(c, y, x)
-			if cells[y][x] == 1 && (n == 2 || n == 3):
-				t_cells[y][x] = 1
-			elif cells[y][x] == 0 && n == 3:
-				t_cells[y][x] = 1
+			if c[y][x] == 1:
+				cells[y][x].visible = true
 			else:
-				t_cells[y][x] = 0
-	
-	return t_cells
+				cells[y][x].visible = false
+
+
+func _input(event):
+	if event is InputEventMouseButton and event.is_pressed():
+		do_next_generation()
+
+
+func next_generation(c1 : Array, c2 : Array):
+	for y in range(c1.size()):
+		for x in range(c1[y].size()):
+			var n = neighbors(c1, y, x)
+			if c1[y][x] == 1 && (n == 2 || n == 3):
+				c2[y][x] = 1
+			elif c1[y][x] == 0 && n == 3:
+				c2[y][x] = 1
+			else:
+				c2[y][x] = 0
 
 
 func neighbors(c : Array, y : int, x : int) -> int:
